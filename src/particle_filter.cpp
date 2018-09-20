@@ -61,7 +61,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	cout << "Prediction" << endl;
     default_random_engine gen;
     
-    for( Particle particle : particles) {
+    for(Particle particle : particles) {
 		particle.x = particle.x + velocity/yaw_rate * abs( sin(particle.theta+(yaw_rate*delta_t)) - sin(particle.theta) );
 		particle.y = particle.y + velocity/yaw_rate * abs( cos(particle.theta) - cos(particle.theta+(yaw_rate*delta_t)) );
 		particle.theta = particle.theta + yaw_rate*delta_t;
@@ -97,6 +97,22 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+  
+    // Transform Observations to map coord.
+    std::vector<LandmarkObs> transf_observations;
+  
+    for( Particle particle : particles) {
+        for ( LandmarkObs obs : observations) {
+            LandmarkObs tobs;
+    		tobs.x = particle.x + cos(particle.theta * obs.x) - sin(particle.theta * obs.y);
+        	tobs.y = particle.y + sin(particle.theta * obs.x) + cos(particle.theta * obs.y); 
+            transf_observations.push_back(tobs);
+        }
+      
+        // calc. dist between tobs and mp_landmarks, founded min. -> set id of landmark as tobs id
+      
+        // calc. weight value
+    }
 }
 
 void ParticleFilter::resample() {
