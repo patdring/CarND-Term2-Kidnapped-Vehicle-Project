@@ -16,6 +16,7 @@
 #include <iterator>
 
 #include "particle_filter.h"
+#include "map.h" 
 
 using namespace std;
 
@@ -24,7 +25,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	cout << "Initialization" << endl;
+	cout << "[0] Initialization" << endl;
   
 	num_particles = 100;   
 	default_random_engine gen;
@@ -45,7 +46,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		particle.theta = dist_theta(gen);
 		particle.weight = 1.0;
 		// Print particle to the terminal.
-		cout << "Particle" << particle.id << " " << particle.x << " " << particle.y << " " << particle.theta << " " << particle.weight << endl;
+		cout << "[0] Particle" << particle.id << " " << particle.x << " " << particle.y << " " << particle.theta << " " << particle.weight << endl;
         particles.push_back(particle);
 	}
 	is_initialized = true;    
@@ -58,7 +59,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine
   
-	cout << "Prediction" << endl;
+	cout << "[1] Prediction" << endl;
     default_random_engine gen;
     
     for(Particle particle : particles) {
@@ -73,7 +74,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		particle.x = dist_x(gen);
 		particle.y = dist_y(gen);
 		particle.theta = dist_theta(gen); 
-        cout << "Particle" << particle.id << " " << particle.x << " " << particle.y << " " << particle.theta << " " << particle.weight << endl;
+        cout << "[1] Particle" << particle.id << " " << particle.x << " " << particle.y << " " << particle.theta << " " << particle.weight << endl;
     }                                                                       
 }
 
@@ -97,21 +98,46 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
-  
+    cout << "[2] Update Weights" << endl;
     // Transform Observations to map coord.
     std::vector<LandmarkObs> transf_observations;
   
+    cout << "[2.1] Transform Observations" << endl;
+    default_random_engine gen;
+  
     for( Particle particle : particles) {
         for ( LandmarkObs obs : observations) {
+            normal_distribution<double> dist_x(obs.x, std_landmark[0]);
+		    normal_distribution<double> dist_y(obs.y, std_landmark[1]);
+          
             LandmarkObs tobs;
-    		tobs.x = particle.x + cos(particle.theta * obs.x) - sin(particle.theta * obs.y);
-        	tobs.y = particle.y + sin(particle.theta * obs.x) + cos(particle.theta * obs.y); 
+    		tobs.x = particle.x + cos(particle.theta * dist_x(gen)) - sin(particle.theta * dist_y(gen));
+        	tobs.y = particle.y + sin(particle.theta * dist_x(gen)) + cos(particle.theta * dist_y(gen)); 
             transf_observations.push_back(tobs);
         }
-      
-        // calc. dist between tobs and mp_landmarks, founded min. -> set id of landmark as tobs id
-      
+          
+        // calc. dist between tobs and map_landmarks, founded min. -> set id of landmark as tobs id
+        cout << "[2.2] Find closest landmark" << endl;              
+        for ( LandmarkObs tobs : transf_observations) {   
+            // landmark sensor range as inital value for min. distance
+            double min_dist = sensor_range;
+            int min_id = -1;
+          
+        	for (int i = 0; i < map_landmarks.landmark_list.size(); i++) {
+            	double d = dist(tobs.x, tobs.y, (double)map_landmarks.landmark_list[i].x_f, \
+                                   (double)map_landmarks.landmark_list[i].y_f);
+            	
+                // reresh id if a new min. distance is detected
+              	if (d < min_dist) {
+                	min_dist = d;
+                  	min_id = map_landmarks.landmark_list[i].id_i;
+                }
+            } 
+          	tobs.id = min_id;
+        }
+     
         // calc. weight value
+        cout << "[2.3] Calculate particle weight value" << endl;
     }
 }
 
