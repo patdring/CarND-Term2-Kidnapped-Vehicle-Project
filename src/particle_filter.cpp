@@ -107,12 +107,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   
     for( Particle particle : particles) {
         for ( LandmarkObs obs : observations) {
-            normal_distribution<double> dist_x(obs.x, std_landmark[0]);
-		    normal_distribution<double> dist_y(obs.y, std_landmark[1]);
-          
             LandmarkObs tobs;
-    		tobs.x = particle.x + cos(particle.theta * dist_x(gen)) - sin(particle.theta * dist_y(gen));
-        	tobs.y = particle.y + sin(particle.theta * dist_x(gen)) + cos(particle.theta * dist_y(gen)); 
+    		tobs.x = particle.x + cos(particle.theta * obs.x) - sin(particle.theta * obs.y);
+        	tobs.y = particle.y + sin(particle.theta * obs.x) + cos(particle.theta * obs.y); 
             transf_observations.push_back(tobs);
         }
           
@@ -138,6 +135,31 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
      
         // calc. weight value
         cout << "[2.3] Calculate particle weight value" << endl;
+      	// calculate normalization term
+		double gauss_norm= (1/(2 * M_PI * std_landmark[0] * std_landmark[1]));
+      
+        for ( LandmarkObs tobs : transf_observations) {           
+          	if (tobs.id == -1) {
+            	continue;
+            }
+          
+            double mu_x = 0.0;
+          	double mu_y = 0.0;
+            
+            for (int i = 0; i < map_landmarks.landmark_list.size(); i++) {
+            	if (tobs.id == map_landmarks.landmark_list[i].id_i) {
+                    mu_x = (double)map_landmarks.landmark_list[i].x_f;
+                    mu_y = (double)map_landmarks.landmark_list[i].y_f;
+                	break;
+                }
+            }
+          
+			// calculate exponent
+			double exponent= ((tobs.x - mu_x)*(tobs.x - mu_x))/(2 * std_landmark[0]*std_landmark[0] ) \
+          						+ ((tobs.y - mu_y)*(tobs.y - mu_y))/(2 * std_landmark[1]*std_landmark[1]);
+			// calculate weight using normalization terms and exponent
+			particle.weight *= gauss_norm * exp(-exponent);
+        }
     }
 }
 
