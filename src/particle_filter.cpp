@@ -103,7 +103,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     std::vector<LandmarkObs> transf_observations;
   
     cout << "[2.1] Transform Observations" << endl;
-    default_random_engine gen;
   
     for( Particle particle : particles) {
         for ( LandmarkObs obs : observations) {
@@ -167,7 +166,31 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-
+	default_random_engine gen;
+  	discrete_distribution<int> dist_i(0, num_particles);
+    int index = dist_i(gen);
+    double beta = 0.0;
+    double mv = 0.0;
+  
+    for( Particle particle : particles) {
+    	if (particle.weight > mv) {
+        	mv = particle.weight;
+        }
+    }
+  
+    std::vector<Particle> new_particles;
+  
+    for (int i = 0; i < particles.size(); i++) {
+        normal_distribution<double> dist_b(0, 2*mv);
+        beta +=  dist_b(gen);
+      	while (beta > particles[index].weight) {
+          	beta -= particles[index].weight;
+          	index = (index + 1) % particles.size();
+        }
+      	new_particles.push_back(particles[index]);
+    } 
+  	// Copying vector by copy function 
+    copy(new_particles.begin(), new_particles.end(), back_inserter(particles));
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
